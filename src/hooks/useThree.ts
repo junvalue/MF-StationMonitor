@@ -10,11 +10,11 @@ import * as THREE from 'three'
 
 export function useThree() {
   const container = ref<HTMLElement>()
-  const scene = shallowRef<THREE.Scene>()
-  const camera = shallowRef<THREE.Camera>()
-  const renderer = shallowRef<THREE.WebGLRenderer>()
-  const cssRenderer = shallowRef<CSS2DRenderer>()
-  const controls = shallowRef<OrbitControls>()
+  const scene = shallowRef<any>()
+  const camera = shallowRef<any>()
+  const renderer = shallowRef<any>()
+  const cssRenderer = shallowRef<any>()
+  const controls = shallowRef<any>()
   const composers = new Map()
   const mixers: any = []
   const clock = new THREE.Clock()
@@ -46,7 +46,7 @@ export function useThree() {
     //Renderer
     renderer.value = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.value.shadowMap.enabled = false
-    renderer.value.outputEncoding = THREE.sRGBEncoding
+    renderer.value.outputColorSpace = THREE.SRGBColorSpace
     renderer.value.setSize(clientWidth, clientHeight)
     renderer.value.setClearAlpha(0.5)
     container.value!.appendChild(renderer.value.domElement)

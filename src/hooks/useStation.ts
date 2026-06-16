@@ -116,7 +116,7 @@ export function useStation() {
 
   const inspect = shallowRef()
 
-  const devices = shallowRef([])
+  const devices = shallowRef<any[]>([])
   const warmingTimer = ref()
   const warmingCurrent = shallowRef()
 
@@ -492,7 +492,7 @@ export function useStation() {
           return undefined
         })
       }
-      const index = sample([0, 1, 2, 3, 4, 5])
+      const index = sample([0, 1, 2, 3, 4, 5]) ?? 0
       warmingCurrent.value = devices.value[index]
 
       cameraAnimation(
