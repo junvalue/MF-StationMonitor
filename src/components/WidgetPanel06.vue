@@ -1,10 +1,11 @@
 <template>
   <LayoutPanel title="预警情况">
     <div class="wrap">
-      <div class="item-list" ref="container">
+      <div class="item-list" :class="{ scroll: isScrolling }">
         <div
           class="item"
-          v-for="{ name, event, type, time } in list"
+          v-for="({ name, event, type, time }, index) in list"
+          :key="`${name}-${time}-${index}`"
           :style="{ background: generateTypeColor(type, true) }"
         >
           <div
@@ -22,7 +23,7 @@
 </template>
 <script setup lang="ts">
 import LayoutPanel from './LayoutPanel.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 
 const list = ref<any[]>([
   {
@@ -171,7 +172,7 @@ const list = ref<any[]>([
   },
 ])
 
-const container = ref()
+const isScrolling = ref(false)
 
 const generateTypeColor = (type: 1 | 2 | 3, gradual = false) => {
   const colors = {
@@ -186,17 +187,27 @@ const generateTypeColor = (type: 1 | 2 | 3, gradual = false) => {
   }
 }
 
-let timer: any
+let timer: ReturnType<typeof setInterval> | undefined
+let animationTimer: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
   if (timer) window.clearInterval(timer)
   timer = setInterval(() => {
-    container.value.classList.add('scroll')
-    setTimeout(() => {
-      if (!timer) return void 0
-      container.value.classList.remove('scroll')
-      list.value.push(list.value.shift())
+    isScrolling.value = true
+    animationTimer = setTimeout(() => {
+      if (!timer) return
+      isScrolling.value = false
+      const firstItem = list.value.shift()
+      if (firstItem) list.value.push(firstItem)
     }, 2000)
   }, 3000)
+})
+
+onBeforeUnmount(() => {
+  if (timer) window.clearInterval(timer)
+  if (animationTimer) window.clearTimeout(animationTimer)
+  timer = undefined
+  animationTimer = undefined
+  isScrolling.value = false
 })
 </script>
 

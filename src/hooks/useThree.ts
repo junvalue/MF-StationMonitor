@@ -1,4 +1,4 @@
-import { onMounted, ref, shallowRef, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, ref, shallowRef, nextTick } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
@@ -19,7 +19,10 @@ export function useThree() {
   const mixers: any = []
   const clock = new THREE.Clock()
   const renderMixins = new Map()
+  let animationFrameId = 0
+  let destroyed = false
   const animate = () => {
+    if (destroyed) return
     const delta = new THREE.Clock().getDelta()
     renderer.value!.render(scene.value!, camera.value!)
     const mixerUpdateDelta = clock.getDelta()
@@ -28,7 +31,7 @@ export function useThree() {
     renderMixins.forEach((mixin) => isFunction(mixin) && mixin())
     cssRenderer.value!.render(scene.value!, camera.value!)
     TWEEN.update()
-    requestAnimationFrame(() => animate())
+    animationFrameId = requestAnimationFrame(() => animate())
   }
 
   const boostrap = () => {
@@ -124,6 +127,17 @@ export function useThree() {
       boostrap()
       animate()
     })
+  })
+
+  onBeforeUnmount(() => {
+    destroyed = true
+    cancelAnimationFrame(animationFrameId)
+    controls.value?.dispose?.()
+    renderer.value?.dispose?.()
+    renderer.value?.domElement?.remove?.()
+    cssRenderer.value?.domElement?.remove?.()
+    renderMixins.clear()
+    composers.clear()
   })
 
   return {

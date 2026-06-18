@@ -8,6 +8,7 @@ import {
   shallowRef,
   ref,
   reactive,
+  onBeforeUnmount,
 } from 'vue'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import TWEEN from 'three/examples/jsm/libs/tween.module.js'
@@ -15,6 +16,8 @@ import * as THREE from 'three'
 import { sample } from 'lodash'
 import useThree from './useThree'
 import WidgetLabel from '@/components/WidgetLabel.vue'
+import { stationTargets } from '@/mock/drilldown'
+import type { DrilldownTarget } from '@/types/drilldown'
 
 // 模型路径信息
 const Sources = {
@@ -23,83 +26,11 @@ const Sources = {
   LineModel: `${import.meta.env.VITE_API_DOMAIN}/models/lines.gltf`,
 }
 
-//设备名称点位信息
-const LabelPositions = [
-  {
-    name: '1# 550KV I线高抗',
-    position: [-32, 8, -22],
-  },
-  {
-    name: '2# 550KV I线高抗',
-    position: [-20.2, 8, -22],
-  },
-  {
-    name: '3# 550KV I线高抗',
-    position: [-8.4, 8, -22],
-  },
-  {
-    name: '4# 550KV I线高抗',
-    position: [3.4, 8, -22],
-  },
-  {
-    name: '5# 550KV I线高抗',
-    position: [15.2, 8, -22],
-  },
-  {
-    name: '6# 550KV I线高抗',
-    position: [27, 8, -22],
-  },
-  {
-    name: '1# 变压器',
-    position: [-32, 8, -6],
-  },
-  {
-    name: '2# 变压器',
-    position: [-20.2, 8, -6],
-  },
-  {
-    name: '3# 变压器',
-    position: [-8.4, 8, -6],
-  },
-  {
-    name: '4# 变压器',
-    position: [3.4, 8, -6],
-  },
-  {
-    name: '5# 变压器',
-    position: [15.2, 8, -6],
-  },
-  {
-    name: '6# 变压器',
-    position: [27, 8, -6],
-  },
-  {
-    name: '1# 隔离开关',
-    position: [-33, 6, 14],
-  },
-  {
-    name: '2# 隔离开关',
-    position: [-21.2, 6, 14],
-  },
-  {
-    name: '3# 隔离开关',
-    position: [-9.4, 6, 14],
-  },
-  {
-    name: '4# 隔离开关',
-    position: [2.4, 6, 14],
-  },
-  {
-    name: '5# 隔离开关',
-    position: [14.2, 6, 14],
-  },
-  {
-    name: '6# 隔离开关',
-    position: [26, 6, 14],
-  },
-]
+interface UseStationOptions {
+  onDrilldown?: (target: DrilldownTarget) => void
+}
 
-export function useStation() {
+export function useStation(options: UseStationOptions = {}) {
   const { container, scene, camera, controls, loadGltf, renderMixins } =
     useThree()
 
@@ -119,6 +50,7 @@ export function useStation() {
   const devices = shallowRef<any[]>([])
   const warmingTimer = ref()
   const warmingCurrent = shallowRef()
+  const labelHosts: HTMLElement[] = []
 
   //加载模型
   const loadModel = async () => {
@@ -159,8 +91,8 @@ export function useStation() {
     }
     renderMixins.set('road-arrow', animation)
   }
-  //添加设备名称标识
-  const addDeviceLabels = () => {
+  // 添加可下钻的设备及厂房标签
+  const addDrilldownLabels = () => {
     const cRender = (component: any, props: any) => {
       const newComponent = defineComponent({
         render() {
@@ -168,11 +100,20 @@ export function useStation() {
         },
       })
       const instance = createVNode(newComponent)
-      render(instance, document.createElement('div'))
-      return instance.el
+      const host = document.createElement('div')
+      labelHosts.push(host)
+      render(instance, host)
+      return instance.el as HTMLElement
     }
-    LabelPositions.forEach((item) => {
-      const label = new CSS2DObject(cRender(WidgetLabel, item))
+    stationTargets.forEach((item) => {
+      const element = cRender(WidgetLabel, {
+        id: item.id,
+        name: item.name,
+        variant: item.kind,
+        onSelect: () => options.onDrilldown?.(item),
+      })
+      element.style.pointerEvents = 'auto'
+      const label = new CSS2DObject(element)
       label.position.set(...item.position)
       scene.value.add(label)
     })
@@ -561,8 +502,14 @@ export function useStation() {
     nextTick(async () => {
       await loadModel()
       addRoadArrowAnimation()
-      addDeviceLabels()
+      addDrilldownLabels()
     })
+  })
+
+  onBeforeUnmount(() => {
+    window.clearInterval(warmingTimer.value)
+    inspect.value?.stop()
+    labelHosts.forEach((host) => render(null, host))
   })
   return {
     container,
